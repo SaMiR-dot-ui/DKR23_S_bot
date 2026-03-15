@@ -4,54 +4,80 @@ from threading import Thread
 from telegram import ReplyKeyboardMarkup, Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-# =========================================================
-# 🛠️ لوحة التحكم - عدل هنا فقط لإضافة أي قسم أو أزرار
-# =========================================================
-
+# ===========================
 # توكن البوت
+# ===========================
 TOKEN = "8718842894:AAGbG-lVSXN5NKssFgEXteTpVnzt-llHU2E"
 
-# تعريف الأقسام ومحتوياتها
-# كل مفتاح (Key) هو "اسم الزرار" اللي بيفتح القسم
+# ===========================
+# تعريف القوائم والأزرار
+# ===========================
 MENU_STRUCTURE = {
     "الرئيسية": {
-        "buttons": ["ما يخص المحاضرات", "ما يخص التاسكات"],
-        "msg": "👋 مرحباً بك في أكاديمية DK R23\nاستخدم الأزرار بالأسفل للتنقل:"
+        "buttons": ["محاضرات", "تاسكات"],
+        "msg": "اختر القسم:"
     },
     
-    "ما يخص المحاضرات": {
-        "buttons": ["فيديوهات التشفير", "فيديوهات التلخيص", "رجوع"],
-        "msg": "📚 قسم المحاضرات:\nاختر التصنيف الذي تريد الوصول إليه."
+    "محاضرات": {
+        "buttons": ["الربع الاول", "الربع الثاني", "الربع الثالث", "الربع الرابع"],
+        "msg": "اختر الربع:"
     },
     
-    "فيديوهات التشفير": {
-        "buttons": ["محاضرة 1", "محاضرة 2", "محاضرة 3", "محاضرة 4", "رجوع"],
-        "msg": "🔐 إليك روابط فيديوهات برنامج التشفير:"
+    "الربع الاول": {
+        "buttons": [
+            "DIALux Software", "Lighting Design", "Power and MEP Design", 
+            "Panel Schedule", "Cutting List + ETAP", "Equipment Sizing + SLD", "Load Estimation + HVAC Design"
+        ],
+        "msg": "اختر الموضوع:"
     },
-
-    "فيديوهات التلخيص": {
-        "buttons": ["تلخيص 1", "تلخيص 2", "رجوع"],
-        "msg": "📺 إليك روابط فيديوهات التلخيص على يوتيوب:"
+    
+    "الربع الثاني": {
+        "buttons": [
+            "Fire Alarm", "Data & Telephone + Public Adress", 
+            "CCTV + Access Control + Parking System", "NCS + Audio Visual + TV",
+            "QS + BOQ + IFC"
+        ],
+        "msg": "اختر الموضوع:"
     },
-
-    "ما يخص التاسكات": {
-        "buttons": ["الربع الأول", "الربع الثاني", "الربع الثالث", "الربع الرابع", "رجوع"],
-        "msg": "📝 قسم التاسكات:\nاختر الربع المطلوب لعرض التاسكات المتاحة."
-    }
+    
+    "الربع الثالث": {
+        "buttons": [
+            "Site Implementation + Method of Statements", "PWR SD", "LTG SD", "Hatch Mark",
+            "Single Line Routing", "Cable Routing SD", "LC SD", "VE + MS + LOG + Client", "Installation Workshop"
+        ],
+        "msg": "اختر الموضوع:"
+    },
+    
+    "الربع الرابع": {
+        "buttons": ["Straight Elements", "Average Length", "Outlets", "Decvices", "Contract Drafts"],
+        "msg": "اختر الموضوع:"
+    },
+    
+    "تاسكات": {
+        "buttons": ["الربع الاول", "الربع الثاني", "الربع الثالث", "الربع الرابع"],
+        "msg": "اختر الربع:"
+    },
 }
 
-# الردود النهائية (اللينكات أو النصوص اللي بتظهر لما تضغط على زرار نهائي)
+# الردود الفرعية لكل موضوع في المحاضرات
+SUB_MENU_LECTURES = ["برنامج التشفير", "فيديو التلخيص"]
+
+# الردود الفرعية لكل موضوع في التاسكات
+SUB_MENU_TASKS = ["توصيف التاسك", "ملفات مرفقة", "استفسارات"]
+
+# الردود النهائية للمواضيع (مثال)
 FINAL_RESPONSES = {
-    "محاضرة 1": "🔗 رابط المحاضرة الأولى: [اضغط هنا](https://example.com)",
-    "محاضرة 2": "🔗 رابط المحاضرة الثانية: [اضغط هنا](https://example.com)",
-    "تلخيص 1": "📺 فيديو التلخيص الأول: [شاهد هنا](https://youtube.com/example)",
-    "تاسك 1": "📌 المطلوب في تاسك 1 هو عمل كذا وكذا..",
-    "default": "⚠️ هذا المحتوى سيتم إضافته قريباً، شكراً لصبرك."
+    "برنامج التشفير": "رابط برنامج التشفير سيتم إضافته هنا.",
+    "فيديو التلخيص": "رابط فيديو التلخيص سيتم إضافته هنا.",
+    "توصيف التاسك": "توصيف التاسك سيتم إضافته هنا.",
+    "ملفات مرفقة": "الملفات المرفقة ستظهر هنا.",
+    "استفسارات": "الردود على الاستفسارات ستظهر هنا.",
+    "default": "المحتوى سيتم إضافته قريباً."
 }
 
-# =========================================================
-# 🌐 نظام الـ Keep Alive (لضمان بقاء البوت صاحياً)
-# =========================================================
+# ===========================
+# نظام Keep Alive
+# ===========================
 app = Flask('')
 
 @app.route('/')
@@ -65,42 +91,71 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# =========================================================
-# ⚙️ المنطق البرمجي (لا يحتاج لتعديل غالباً)
-# =========================================================
-
-def get_keyboard(button_list):
-    # تقسيم الأزرار لصفوف (كل صف زرارين)
-    rows = [button_list[i:i + 2] for i in range(0, len(button_list), 2)]
+# ===========================
+# دوال مساعدة
+# ===========================
+def get_keyboard(button_list, add_back_buttons=True, menu_type="lecture"):
+    """
+    توليد لوحة الأزرار مع الزرين الثابتين في الأسفل (رجع خطوة / الرئيسية)
+    button_list: قائمة الأزرار العلوية
+    add_back_buttons: إضافة أزرار الرجوع أم لا
+    menu_type: "lecture" أو "task" لتحديد الفرعي
+    """
+    # تقسيم الأزرار لصفوف (كل صف زر واحد فقط لتكون فوق بعض)
+    rows = [[btn] for btn in button_list]
+    
+    # إضافة الزرين الثابتين في الأسفل
+    if add_back_buttons:
+        rows.append(["رجع خطوة", "الرئيسية"])
+    
     return ReplyKeyboardMarkup(rows, resize_keyboard=True)
 
+# ===========================
+# المنطق البرمجي
+# ===========================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     content = MENU_STRUCTURE["الرئيسية"]
-    await update.message.reply_text(content["msg"], reply_markup=get_keyboard(content["buttons"]))
+    await update.message.reply_text(content["msg"], reply_markup=get_keyboard(content["buttons"], add_back_buttons=False))
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-
-    # نظام الرجوع والقائمة الرئيسية
-    if text == "رجوع" or text == "الرئيسية":
+    
+    # الرجوع
+    if text == "الرئيسية":
+        await start(update, context)
+        return
+    if text == "رجع خطوة":
+        # نقدر نخلي الرجوع للوالد مباشرة (هنا افتراضياً نرجع للرئيسية)
         await start(update, context)
         return
 
-    # الانتقال بين القوائم
+    # القوائم الرئيسية والفرعية
     if text in MENU_STRUCTURE:
         content = MENU_STRUCTURE[text]
         await update.message.reply_text(content["msg"], reply_markup=get_keyboard(content["buttons"]))
-    
-    # عرض الردود النهائية
-    elif text in FINAL_RESPONSES:
-        await update.message.reply_text(FINAL_RESPONSES[text], parse_mode='Markdown')
-    
-    # في حالة ضغط زرار ملوش محتوى لسه
-    else:
-        await update.message.reply_text(FINAL_RESPONSES["default"])
+        return
 
+    # المواضيع النهائية للمحاضرات
+    if text in SUB_MENU_LECTURES or text in SUB_MENU_TASKS:
+        if text in FINAL_RESPONSES:
+            await update.message.reply_text(FINAL_RESPONSES[text])
+        else:
+            await update.message.reply_text(FINAL_RESPONSES["default"])
+        return
+
+    # مواضيع محددة في كل ربع
+    if text in FINAL_RESPONSES:
+        await update.message.reply_text(FINAL_RESPONSES[text])
+        return
+
+    # زرار افتراضي
+    await update.message.reply_text(FINAL_RESPONSES["default"])
+
+# ===========================
+# التشغيل
+# ===========================
 if __name__ == '__main__':
-    keep_alive() # تشغيل سيرفر Flask
+    keep_alive()
     print("Bot is starting...")
     application = ApplicationBuilder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
